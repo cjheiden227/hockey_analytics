@@ -26,7 +26,8 @@ def cmd_setup(args):
     packages = [
         "pandas", "numpy", "matplotlib", "seaborn", 
         "requests", "beautifulsoup4", "sqlalchemy", 
-        "psycopg2-binary", "psycopg", "psycopg-binary", "jupyterlab", "pydantic-settings", "nhl-api-py"
+        "psycopg2-binary", "psycopg", "psycopg-binary", 
+        "jupyterlab", "pydantic-settings", "nhl-api-py"
     ]
     subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], check=True)
     subprocess.run([sys.executable, "-m", "pip", "install"] + packages, check=True)
@@ -132,10 +133,19 @@ def cmd_setup(args):
 
 
 def cmd_fetch(args):
-    """Placeholder command for running your data ingestion scripts."""
+    """Runs data ingestion scripts."""
     print("Running data ingestion pipeline...")
-    # Example: from src.fetch_red_wings import run_fetcher; run_fetcher()
+    from src.fetch_red_wings import fetch_red_wings_history
+    fetch_red_wings_history()
     print("Data ingestion routine complete.")
+
+
+def cmd_bulk_ingest(args):
+    """Runs high-performance bulk data ingestion pipeline."""
+    print("Running high-performance bulk data ingestion pipeline...")
+    from src.bulk_ingest import bulk_ingest_red_wings_games
+    bulk_ingest_red_wings_games()
+    print("Bulk data ingestion routine complete.")
 
 
 def main():
@@ -149,6 +159,10 @@ def main():
     # python manage.py fetch
     parser_fetch = subparsers.add_parser("fetch", help="Run raw play-by-play data ingestion scripts.")
     parser_fetch.set_defaults(func=cmd_fetch)
+
+    # python manage.py bulk-ingest
+    parser_bulk = subparsers.add_parser("bulk-ingest", help="Run high-performance bulk data ingestion.")
+    parser_bulk.set_defaults(func=cmd_bulk_ingest)
 
     args = parser.parse_args()
     args.func(args)
