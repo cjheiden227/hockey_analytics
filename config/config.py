@@ -1,9 +1,19 @@
+import os
+import sys
+import json
+import subprocess
+from sqlalchemy import text
+
+# Import your unified settings and engine from config.py
+from config.config import settings, engine, BASE_DIR
+
+DIRS = ["config", "data/raw", "data/processed", "database", "notebooks", "src"]
 
 def scaffold():
     """Builds folder paths safely to prevent directory access violations."""
     print("[1/4] Constructing development pathways...")
     for folder in DIRS:
-        full_path = os.path.join(PROJECT_ROOT, folder)
+        full_path = os.path.join(settings.BASE_DIR, folder)
         if not os.path.exists(full_path):
             os.makedirs(full_path)
             print(f" -> Created directory: {folder}")
@@ -15,20 +25,17 @@ def resolve_dependencies():
     packages = [
         "pandas", "numpy", "matplotlib", "seaborn", 
         "requests", "beautifulsoup4", "sqlalchemy", 
-        "psycopg2-binary", "psycopg", "psycopg-binary", "jupyterlab"
+        "psycopg2-binary", "psycopg", "psycopg-binary", "jupyterlab", "pydantic-settings"
     ]
     
-    # Upgrade pip engine installer tool
     subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], check=True)
-    
-    # Batch download analytics stack libraries
     subprocess.run([sys.executable, "-m", "pip", "install"] + packages, check=True)
     print("Core package resolution verification complete.")
 
 def write_notebook():
     """Generates the workspace notebook using native JSON compiling to avoid NotJSONErrors."""
     print("\n[3/4] Initializing clean Jupyter exploratory notebook...")
-    notebook_path = os.path.join(PROJECT_ROOT, "notebooks", "exploratory_analysis.ipynb")
+    notebook_path = os.path.join(settings.BASE_DIR, "notebooks", "exploratory_analysis.ipynb")
     
     nb_struct = {
         "cells": [
@@ -49,9 +56,9 @@ def write_notebook():
                     "import os\n",
                     "import numpy as np\n",
                     "import pandas as pd\n",
-                    "from sqlalchemy import create_engine\n\n",
-                    f"engine = create_engine('postgresql+psycopg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}')\n",
-                    "print('Analytic engine handshake initialized safely using native Psycopg driver.')"
+                    "from config.config import engine, settings\n\n",
+                    "print(f'Connected to database via URL: {settings.database_url}')\n",
+                    "print('Analytic engine handshake initialized safely.')"
                 ]
             }
         ],
@@ -65,12 +72,8 @@ def write_notebook():
     print(" -> Deployed clean notebook file: notebooks/exploratory_analysis.ipynb")
 
 def initialize_database():
-    """Deploys table schema scripts directly into local PostgreSQL instance."""
+    """Deploys table schema scripts directly into local PostgreSQL instance using config.py engine."""
     print("\n[4/4] Executing structural table initialization routines...")
-    
-    # Target string configuration mapping utilizing the native psycopg v3 driver format
-    db_url = f"postgresql+psycopg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    engine = create_engine(db_url)
     
     schema_sql = """
     CREATE TABLE IF NOT EXISTS teams (
@@ -135,3 +138,9 @@ def initialize_database():
     except Exception as e:
         print(f" -> Execution warning: {e}")
         print(" -> Verify local service status and base credentials matching config parameters.")
+
+if __name__ == "__main__":
+    scaffold()
+    resolve_dependencies()
+    write_notebook()
+    initialize_database()

@@ -1,63 +1,39 @@
+#!/usr/bin/env python
 import os
 import sys
-import subprocess
 import json
-from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+import argparse
+import subprocess
+from sqlalchemy import text
 
-# Load environment variables from a local .env file
-load_dotenv()
+# Import your unified settings and engine from config.py
+from config.config import settings, engine
 
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+DIRS = ["config", "data/raw", "data/processed", "database", "notebooks", "src"]
 
-# Folder tree schema layout mapping
-DIRS = [
-    "data/raw",
-    "data/processed",
-    "database",
-    "src",
-    "notebooks",
-    "config"
-]
 
-# Pull database credentials safely from environment variables
-DB_USER = os.getenv("DB_USER", "hockey_db")
-DB_PASS = os.getenv("DB_PASS")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "hockey_stats")
-
-def scaffold():
-    """Builds folder paths safely to prevent directory access violations."""
-    print("[1/4] Constructing development pathways...")
+def cmd_setup(args):
+    """Creates project directories, installs dependencies, writes the notebook, and initializes DB tables."""
+    print("=== [1/4] Constructing development pathways ===")
     for folder in DIRS:
-        full_path = os.path.join(PROJECT_ROOT, folder)
-        if not os.path.exists(full_path):
-            os.makedirs(full_path)
+        full_path = settings.BASE_DIR / folder
+        if not full_path.exists():
+            full_path.mkdir(parents=True, exist_ok=True)
             print(f" -> Created directory: {folder}")
-    print("Scaffolding complete.")
+    print("Scaffolding complete.\n")
 
-def resolve_dependencies():
-    """Forces pip optimization using binary fallbacks to stop driver errors."""
-    print("\n[2/4] Syncing explicit core library packages (including Psycopg drivers)...")
+    print("=== [2/4] Syncing explicit core library packages ===")
     packages = [
         "pandas", "numpy", "matplotlib", "seaborn", 
         "requests", "beautifulsoup4", "sqlalchemy", 
-        "psycopg2-binary", "psycopg", "psycopg-binary", "jupyterlab"
+        "psycopg2-binary", "psycopg", "psycopg-binary", "jupyterlab", "pydantic-settings"
     ]
-    
-    # Upgrade pip engine installer tool
     subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], check=True)
-    
-    # Batch download analytics stack libraries
     subprocess.run([sys.executable, "-m", "pip", "install"] + packages, check=True)
-    print("Core package resolution verification complete.")
+    print("Core package resolution verification complete.\n")
 
-def write_notebook():
-    """Generates the workspace notebook using native JSON compiling to avoid NotJSONErrors."""
-    print("\n[3/4] Initializing clean Jupyter exploratory notebook...")
-    notebook_path = os.path.join(PROJECT_ROOT, "notebooks", "exploratory_analysis.ipynb")
-    
+    print("=== [3/4] Initializing clean Jupyter exploratory notebook ===")
+    notebook_path = settings.BASE_DIR / "notebooks" / "exploratory_analysis.ipynb"
     nb_struct = {
         "cells": [
             {
@@ -77,9 +53,9 @@ def write_notebook():
                     "import os\n",
                     "import numpy as np\n",
                     "import pandas as pd\n",
-                    "from sqlalchemy import create_engine\n\n",
-                    f"engine = create_engine('postgresql+psycopg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}')\n",
-                    "print('Analytic engine handshake initialized safely using native Psycopg driver.')"
+                    "from config.config import engine, settings\n\n",
+                    "print(f'Connected to database via URL: {settings.database_url}')\n",
+                    "print('Analytic engine handshake initialized safely.')"
                 ]
             }
         ],
@@ -87,19 +63,11 @@ def write_notebook():
         "nbformat": 4,
         "nbformat_minor": 2
     }
-    
     with open(notebook_path, "w", encoding="utf-8") as f:
         json.dump(nb_struct, f, indent=2)
-    print(" -> Deployed clean notebook file: notebooks/exploratory_analysis.ipynb")
+    print(f" -> Deployed clean notebook file: {notebook_path}\n")
 
-def initialize_database():
-    """Deploys table schema scripts directly into local PostgreSQL instance."""
-    print("\n[4/4] Executing structural table initialization routines...")
-    
-    # Target string configuration mapping utilizing the native psycopg v3 driver format
-    db_url = f"postgresql+psycopg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    engine = create_engine(db_url)
-    
+    print("=== [4/4] Executing structural table initialization routines ===")
     schema_sql = """
     CREATE TABLE IF NOT EXISTS teams (
         team_id VARCHAR(3) PRIMARY KEY,
@@ -152,23 +120,39 @@ def initialize_database():
     CREATE INDEX IF NOT EXISTS idx_box_scores_player ON player_game_box_scores(player_id);
     CREATE INDEX IF NOT EXISTS idx_box_scores_game ON player_game_box_scores(game_id);
     """
-    
     try:
         with engine.begin() as connection:
             for statement in schema_sql.split(";"):
-                clean_statement = statement.strip()
-                if clean_statement:
-                    connection.execute(text(clean_statement))
+                clean_stmt = statement.strip()
+                if clean_stmt:
+                    connection.execute(text(clean_stmt))
         print(" -> Relational schemas successfully loaded to PostgreSQL server.")
     except Exception as e:
         print(f" -> Execution warning: {e}")
-        print(" -> Verify local service status and base credentials matching config parameters.")
+
+
+def cmd_fetch(args):
+    """Placeholder command for running your data ingestion scripts."""
+    print("Running data ingestion pipeline...")
+    # Example: from src.fetch_red_wings import run_fetcher; run_fetcher()
+    print("Data ingestion routine complete.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Hockey Analytics Pipeline Management CLI")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # python manage.py setup
+    parser_setup = subparsers.add_parser("setup", help="Initialize directories, dependencies, notebook, and database tables.")
+    parser_setup.set_defaults(func=cmd_setup)
+
+    # python manage.py fetch
+    parser_fetch = subparsers.add_parser("fetch", help="Run raw play-by-play data ingestion scripts.")
+    parser_fetch.set_defaults(func=cmd_fetch)
+
+    args = parser.parse_args()
+    args.func(args)
+
 
 if __name__ == "__main__":
-    print("=== HOCKEY ANALYTICS FRAMEWORK MASTER DEPLOYMENT ENGINE ===")
-    scaffold()
-    resolve_dependencies()
-    write_notebook()
-    initialize_database()
-    print("\n============================================================")
-    print("Workspace fully calibrated and ready for block sprint tasks!")
+    main()
