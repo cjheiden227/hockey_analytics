@@ -26,7 +26,7 @@ def cmd_setup(args):
     packages = [
         "pandas", "numpy", "matplotlib", "seaborn", 
         "requests", "beautifulsoup4", "sqlalchemy", 
-        "psycopg2-binary", "psycopg", "psycopg-binary", "jupyterlab", "pydantic-settings"
+        "psycopg2-binary", "psycopg", "psycopg-binary", "jupyterlab", "pydantic-settings", "nhl-api-py"
     ]
     subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], check=True)
     subprocess.run([sys.executable, "-m", "pip", "install"] + packages, check=True)
