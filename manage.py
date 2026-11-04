@@ -2,7 +2,11 @@ import os
 import sys
 import subprocess
 import json
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
+
+# Load environment variables from a local .env file
+load_dotenv()
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -16,12 +20,12 @@ DIRS = [
     "config"
 ]
 
-# Local database target configurations
-DB_USER = "hockey_db"
-DB_PASS = "cjh[227]"
-DB_HOST = "localhost"
-DB_PORT = "5432"
-DB_NAME = "hockey_stats"
+# Pull database credentials safely from environment variables
+DB_USER = os.getenv("DB_USER", "hockey_db")
+DB_PASS = os.getenv("DB_PASS")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "hockey_stats")
 
 def scaffold():
     """Builds folder paths safely to prevent directory access violations."""
